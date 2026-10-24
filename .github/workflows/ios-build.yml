@@ -16,8 +16,9 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install cactus-needle
-        run: pip install cactus-needle
+      - name: Install dependencies
+        run: |
+          pip install cactus-needle numpy sentencepiece
 
       - name: Build iOS engine + weights
         run: |
