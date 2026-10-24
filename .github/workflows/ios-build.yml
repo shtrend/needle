@@ -18,7 +18,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install cactus-needle numpy sentencepiece
+          pip install cactus-needle numpy sentencepiece jax
 
       - name: Build iOS engine + weights
         run: |
