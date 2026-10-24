@@ -1,0 +1,79 @@
+name: Build Needle iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install cactus-needle
+        run: pip install cactus-needle
+
+      - name: Build iOS engine + weights
+        run: |
+          needle build --platform ios-arm64 --layers 8 --out ./iphone-build
+          ls -la ./iphone-build/
+
+      - name: Write iOS runner (Objective-C++)
+        run: |
+          cat > main.mm << 'EOF'
+          #import "needle.h"
+          #import <Foundation/Foundation.h>
+          
+          int main(int argc, const char * argv[]) {
+              @autoreleasepool {
+                  NSString *path = [[NSBundle mainBundle] pathForResource:@"needle3" ofType:@"cact"];
+                  NSData *data = [NSData dataWithContentsOfFile:path];
+                  const unsigned char *bytes = (const unsigned char *)[data bytes];
+                  NSUInteger len = [data length];
+                  
+                  int ret = needle_load(bytes, len);
+                  if (ret < 0) {
+                      fprintf(stderr, "Load failed: %s\n", needle_last_error());
+                      return 1;
+                  }
+                  
+                  ret = needle_init(NULL, "[]", NULL);
+                  if (ret < 0) {
+                      fprintf(stderr, "Init failed: %s\n", needle_last_error());
+                      return 1;
+                  }
+                  
+                  char out[8192];
+                  ret = needle_complete("你好，请介绍一下你自己", NULL, 0, 128, out, 8192);
+                  if (ret < 0) {
+                      fprintf(stderr, "Complete failed: %s\n", needle_last_error());
+                      return 1;
+                  }
+                  
+                  printf("%s\n", out);
+                  needle_reset();
+              }
+              return 0;
+          }
+          EOF
+
+      - name: Compile for iOS arm64
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          clang++ -arch arm64 -isysroot "$SDK" main.mm ./iphone-build/libneedle.a -o needle-ios
+          file needle-ios
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: needle-ios-arm64
+          path: |
+            needle-ios
+            iphone-build/needle3.cact
+          retention-days: 7
