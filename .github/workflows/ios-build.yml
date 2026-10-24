@@ -11,19 +11,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install dependencies
+      - name: Download iOS prebuilt library + weights from Hugging Face
         run: |
-          pip install cactus-needle numpy sentencepiece jax
-
-      - name: Build iOS server + weights
-        run: |
-          needle build --platform ios-arm64 --layers 8 --out ./iphone-build
-          ls -la ./iphone-build/
+          mkdir -p iphone-build
+          curl -sL -o iphone-build/libneedle.a "https://hf-mirror.com/Cactus-Compute/needle3/resolve/main/ios-arm64/libneedle.a"
+          curl -sL -o iphone-build/needle.h "https://hf-mirror.com/Cactus-Compute/needle3/resolve/main/ios-arm64/needle.h"
+          curl -sL -o iphone-build/needle3.cact "https://hf-mirror.com/Cactus-Compute/needle3/resolve/main/needle3.cact"
+          ls -la iphone-build/
+          file iphone-build/libneedle.a
 
       - name: Write iOS runner (Objective-C++)
         run: |
@@ -67,7 +62,7 @@ jobs:
       - name: Compile for iOS arm64
         run: |
           SDK=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang++ -arch arm64 -isysroot "$SDK" -I ./iphone-build main.mm ./iphone-build/libneedle.a -o needle-ios
+          clang++ -arch arm64 -isysroot "$SDK" -I ./iphone-build main.mm ./iphone-build/libneedle.a -o needle-ios -framework Foundation
           file needle-ios
 
       - name: Upload artifact
