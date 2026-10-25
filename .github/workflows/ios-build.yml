@@ -59,10 +59,10 @@ jobs:
           }
           EOF
 
-      - name: Compile for iOS arm64 (4 layers - lighter)
+      - name: Compile for iOS arm64
         run: |
           SDK=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang++ -arch arm64 -isysroot "$SDK" -I ./iphone-build main.mm ./iphone-build/libneedle.a -o needle-ios
+          clang++ -arch arm64 -isysroot "$SDK" -I ./iphone-build -framework Foundation main.mm ./iphone-build/libneedle.a -o needle-ios
           file needle-ios
 
       - name: Upload artifact
